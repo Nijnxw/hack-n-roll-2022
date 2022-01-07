@@ -6,6 +6,7 @@ import requests
 
 config = load_dotenv(".env")
 TOKEN = os.environ.get('TOKEN')
+PORT = int(os.environ.get('PORT', 5000))
 
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 
@@ -433,4 +434,9 @@ Click on the manga to see more info:
 
 
 ### Allow bot to listen for messages
-bot.infinity_polling()
+# bot.infinity_polling()
+
+bot.start_webhook(listen="0.0.0.0",
+                          port=int(PORT),
+                          url_path=TOKEN)
+bot.bot.setWebhook('https://drama-and-anime-buddy.herokuapp.com/' + TOKEN)
