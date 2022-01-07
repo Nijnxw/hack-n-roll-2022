@@ -147,7 +147,63 @@ def send_drama_details(message, query):
    )
 
 def get_drama_reviews(query):
-    send_drama_details(query.message, query.data[3:])
+    send_drama_reviews(query.message, query.data[3:])
+
+def send_drama_reviews(message, query):
+    url = "https://kuryana.vercel.app/search/q/{"
+    response = requests.get(url + query + "}")
+    slug = response.json()["results"]["dramas"][0]["slug"]
+
+    url = "https://kuryana.vercel.app/id/"
+    response = requests.get(url + slug + "/reviews")
+    data = response.json()["data"]
+    reviews = response.json()["data"]["reviews"][:2]
+    review_details = []
+    for review in reviews:
+        review_detail = {
+            "reviewer_name": review.get("reviewer", {}).get("name", ""),
+            "review": review.get("review", "A"*56)[0:len(review.get("review", ""))-56],
+            "ratings-overall": review.get("ratings", {}).get("overall", ""),
+            "ratings-story": review.get("ratings", {}).get("Story", ""),
+            "ratings-acting": review.get("ratings", {}).get("Acting/Cast", ""),
+            "ratings-music": review.get("ratings", {}).get("Music", ""),
+            "ratings-rewatch": review.get("ratings", {}).get("Rewatch Value", ""),
+            "info": review.get("reviewer", {}).get("info", ""),
+        }
+        review_details.append(review_detail)
+
+    message_text = f'''
+    <b><a href='{data.get("link", "")}'>{data.get("title", "")}</a></b>
+    '''
+
+    for i in range(0, 2):
+        if i >= len(review_details):
+            break
+        review_detail = review_details[i]
+        if i == 1:
+            message_text += f'~' * 50
+        message_text += f'''
+<b>Reviewer Name:</b><code> {review_detail["reviewer_name"]}</code>
+<b>Overall:</b><code> {review_detail["ratings-overall"]}/10</code>
+<b>Story:</b><code> {review_detail["ratings-story"]}/10</code>
+<b>Acting/Cast:</b><code> {review_detail["ratings-acting"]}/10</code>
+<b>Music:</b><code> {review_detail["ratings-music"]}/10</code>
+<b>Rewatch Value:</b><code> {review_detail["ratings-rewatch"]}/10</code>
+
+<b>Review:</b><code> {review_detail['review'][:1500]}...</code>
+<b>{review_detail["info"]}</b> 👍
+    '''
+
+    if len(review_details) == 0:
+        message_text += f'''
+        <b> There are no reviews at the moment </b>
+        '''
+
+    bot.send_message(
+       message.chat.id, message_text,
+       parse_mode='HTML',
+       disable_web_page_preview=True
+   )
 
 
 
