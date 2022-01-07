@@ -1,21 +1,28 @@
 import os
-import logging
 
 from dotenv import load_dotenv
 import telebot
 import requests
-
-from telegram import Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 
 config = load_dotenv(".env")
 TOKEN = os.environ.get('TOKEN')
 
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 
-@bot.message_handler(commands=['start', 'help'])
+@bot.message_handler(commands=['start'])
 def send_welcome(message):
     bot.reply_to(message, "Howdy, how are you doing?")
+
+@bot.message_handler(commands=['help'])
+def send_welcome(message):
+    bot.reply_to(message, '''
+This is the list of commands that I know:
+
+/start → Welcome message
+/help → This message
+/search [your input] → finds drama/anime/manga
+    '''
+    )
 
 @bot.message_handler(commands=['search'])
 def exchange_command(message):
@@ -51,6 +58,18 @@ def handle_callback(query):
         get_manga_details(query)
     elif data.startswith('recc-manga'):
         get_manga_recc(query)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -129,6 +148,18 @@ def send_drama_details(message, query):
 
 def get_drama_reviews(query):
     send_drama_details(query.message, query.data[3:])
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -233,6 +264,19 @@ Click on the manga to see more info:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 ###########################################
 """             MANGA QUERY             """
 ###########################################
@@ -324,6 +368,11 @@ Click on the manga to see more info:
     '''
 
     bot.send_message(message.chat.id, message_text, parse_mode='HTML', reply_markup=keyboard)
+
+
+
+
+
 
 
 
