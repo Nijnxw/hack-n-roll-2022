@@ -32,8 +32,10 @@ def handle_callback(query):
     data = query.data
     if data.startswith('search-drama'):
         get_drama_callback(query)
-    elif data.startswith('drama-'):
+    elif data.startswith('d-'):
         get_drama_details(query)
+    elif data.startswith('dr-'):
+        get_drama_reviews(query)
     elif data.startswith('search-anime'):
         get_anime_callback(query)
     elif data.startswith('anime-'):
@@ -53,17 +55,72 @@ def send_drama_search_result(message, query):
     keyboard = telebot.types.InlineKeyboardMarkup()
     for drama in dramas:
         keyboard.row(
-        telebot.types.InlineKeyboardButton(drama["title"], callback_data="drama-" + drama["slug"])
+        telebot.types.InlineKeyboardButton(drama["title"], callback_data="d-"+drama["title"])
         )
     bot.send_message(message.chat.id, 'Click the drama you would like to see info of:', reply_markup=keyboard)
 
+def get_drama_selection(query):
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    keyboard.row(
+        telebot.types.InlineKeyboardButton('Drama Info', callback_data='di-' + message.text[8:]),
+        telebot.types.InlineKeyboardButton('Drama Reviews', callback_data='dr-' + message.text[8:])
+        )
+    bot.send_message(message.chat.id, 'Click the ?????:', reply_markup=keyboard)
+
 def get_drama_details(query):
-    bot.answer_callback_query(query.id)
-    send_drama_details(query.message, query.data[6:])
+    send_drama_details(query.message, query.data[2:])
 
 def send_drama_details(message, query):
-    # Working on it
-    return
+    url = "https://kuryana.vercel.app/search/q/{"
+    response = requests.get(url + query + "}")
+    slug = response.json()["results"]["dramas"][0]["slug"]
+
+    url = "https://kuryana.vercel.app/id/"
+    response = requests.get(url + slug)
+    drama = response.json()["data"]
+
+    details = {
+        "poster": drama.get("poster", ""),
+        "link": drama.get("link", ""),
+        "title": drama.get("title", ""),
+        "score": drama.get("details", {}).get("score", ""),
+        "country": drama.get("details", {}).get("country", ""),
+        "episodes": drama.get("details", {}).get("episodes", ""),
+        "aired": drama.get("details", {}).get("aired", ""),
+        "duration": drama.get("details", {}).get("duration", ""),
+        "content_rating": drama.get("details", {}).get("content_rating", ""),
+        "tags": drama.get("others", {}).get("tags", ""),
+        "genres": drama.get("others", {}).get("genres", ""),
+        "synopsis": drama.get("synopsis", "")
+    }
+
+    message_text = f'''<a href='{details["poster"]}'>{'&#8203;'}</a>
+<b><a href='{details['link']}'>{details["title"]}</a></b>
+⭐️ Ratings: {details['score']}
+
+<b>Title:</b><code> {details["title"]}</code>
+<b>Country:</b><code> {details["country"]}</code>
+<b>Episodes:</b><code> {details['episodes']}</code>
+<b>Aired:</b><code> {details['aired']}</code>
+<b>Duration:</b><code> {details['duration']}</code>
+<b>Content Rating:</b><code> {details['content_rating']}</code>
+<b>Genres:</b><code> {details['genres']}</code>
+<b>Tags:</b><code> {details['tags']}</code>
+
+<b>Synopsis:</b><code> {details['synopsis'][:500]}...</code>
+    '''
+
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    keyboard.row(telebot.types.InlineKeyboardButton('Drama Reviews', callback_data='dr-' + query))
+
+    bot.send_message(
+       message.chat.id, message_text,
+       parse_mode='HTML',
+       reply_markup=keyboard
+   )
+
+def get_drama_reviews(query):
+    send_drama_details(query.message, query.data[3:])
 
 """ ANIME QUERY """
 
@@ -129,62 +186,3 @@ Genre: {genres}
     bot.send_message(message.chat.id, message_text, parse_mode='HTML')
 
 bot.infinity_polling()
-
-# # Enable logging
-# logging.basicConfig(
-#     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
-# )
-
-# logger = logging.getLogger(__name__)
-
- 
-# # Define a few command handlers. These usually take the two arguments update and
-# # context.
-# def start(update: Update, context: CallbackContext) -> None:
-#     """Send a message when the command /start is issued."""
-#     user = update.effective_user
-#     update.message.reply_markdown_v2(fr'Hi {user.mention_markdown_v2()}\!')
-
-
-# def help_command(update: Update, context: CallbackContext) -> None:
-#     """Send a message when the command /help is issued."""
-#     update.message.reply_text('Help!')
-
-
-# def echo(update: Update, context: CallbackContext) -> None:
-#     """Echo the user message."""
-#     update.message.reply_text(update.message.text)
-
-# def error(update, context):
-#     """Log Errors caused by Updates."""
-#     logger.warning('Update "%s" caused error "%s"', update, context.error)
-
-# def main() -> None:
-#     """Start the bot."""
-#     # Create the Updater and pass it your bot's token.
-#     updater = Updater(token=TOKEN, use_context=True)
-
-#     # Get the dispatcher to register handlers
-#     dispatcher = updater.dispatcher
-
-#     # on different commands - answer in Telegram
-#     dispatcher.add_handler(CommandHandler("start", start))
-#     dispatcher.add_handler(CommandHandler("help", help_command))
-
-#     # on non command i.e message - echo the message on Telegram
-#     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo))
-
-#     # log all errors
-#     dispatcher.add_error_handler(error)
-
-#     # Start the Bot
-#     updater.start_polling()
-
-#     # Run the bot until you press Ctrl-C or the process receives SIGINT,
-#     # SIGTERM or SIGABRT. This should be used most of the time, since
-#     # start_polling() is non-blocking and will stop the bot gracefully.
-#     updater.idle()
-
-
-# if __name__ == '__main__':
-#     main()
