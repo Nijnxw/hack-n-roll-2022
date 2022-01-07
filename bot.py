@@ -40,8 +40,17 @@ def handle_callback(query):
         get_anime_callback(query)
     elif data.startswith('anime-'):
         get_anime_details(query)
+    elif data.startswith('search-manga'):
+        get_manga_callback(query)
+    elif data.startswith('manga-'):
+        get_manga_details(query)
 
-""" DRAMA QUERY """
+
+
+
+###########################################
+"""             DRAMA QUERY             """
+###########################################
 
 def get_drama_callback(query):
     bot.answer_callback_query(query.id)
@@ -58,14 +67,6 @@ def send_drama_search_result(message, query):
         telebot.types.InlineKeyboardButton(drama["title"], callback_data="d-"+drama["title"])
         )
     bot.send_message(message.chat.id, 'Click the drama you would like to see info of:', reply_markup=keyboard)
-
-def get_drama_selection(query):
-    keyboard = telebot.types.InlineKeyboardMarkup()
-    keyboard.row(
-        telebot.types.InlineKeyboardButton('Drama Info', callback_data='di-' + message.text[8:]),
-        telebot.types.InlineKeyboardButton('Drama Reviews', callback_data='dr-' + message.text[8:])
-        )
-    bot.send_message(message.chat.id, 'Click the ?????:', reply_markup=keyboard)
 
 def get_drama_details(query):
     send_drama_details(query.message, query.data[2:])
@@ -122,7 +123,14 @@ def send_drama_details(message, query):
 def get_drama_reviews(query):
     send_drama_details(query.message, query.data[3:])
 
-""" ANIME QUERY """
+
+
+
+
+
+###########################################
+"""             ANIME QUERY             """
+###########################################
 
 def get_anime_callback(query):
     bot.answer_callback_query(query.id)
@@ -140,10 +148,7 @@ def send_anime_search_result(message, query):
     keyboard = telebot.types.InlineKeyboardMarkup()
     for anime in animes:
         title = anime["title_english"] if anime["title_english"] else anime["title"]
-        print
-        keyboard.row(
-        telebot.types.InlineKeyboardButton(title, callback_data="anime-" + str(anime["mal_id"]))
-        )
+        keyboard.row(telebot.types.InlineKeyboardButton(title, callback_data="anime-" + str(anime["mal_id"])))
     
     message_text = f'''
 We have found <b><i>{len(animes)}</i></b> animes!
@@ -185,4 +190,74 @@ Genre: {genres}
 
     bot.send_message(message.chat.id, message_text, parse_mode='HTML')
 
+
+
+
+
+
+
+###########################################
+"""             MANGA QUERY             """
+###########################################
+
+def get_manga_callback(query):
+    bot.answer_callback_query(query.id)
+    send_manga_search_result(query.message, query.data[12:])
+
+def send_manga_search_result(message, query):
+    url = "https://api.jikan.moe/v4/manga?q="
+    response = requests.get(url + query)
+    mangas = response.json()['data']
+
+    if len(mangas) == 0:
+        bot.send_message(message.chat.id, 'Sorry! We couldn\'t find any manga 😔', parse_mode='HTML')
+        return
+
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    for manga in mangas:
+        title = manga["title_english"] if manga["title_english"] else manga["title"]
+        keyboard.row(telebot.types.InlineKeyboardButton(title, callback_data="manga-" + str(manga["mal_id"])))
+    
+    message_text = f'''
+We have found <b><i>{len(mangas)}</i></b> mangas!
+
+Click on the manga to see more info:
+    '''
+
+    bot.send_message(message.chat.id, message_text, parse_mode='HTML', reply_markup=keyboard)
+
+def get_manga_details(query):
+    bot.answer_callback_query(query.id)
+    send_manga_details(query.message, query.data[6:])
+
+def send_manga_details(message, query):
+    url = "https://api.jikan.moe/v4/manga/"
+    response = requests.get(url + query)
+    details = response.json()['data']
+    print('\n\n', details.keys())
+
+    title = details["title_english"] if details["title_english"] else details["title"]
+    genres = ''
+    for genre in details['genres']:
+        genres += '#' + genre['name'] + ' '
+
+    message_text = f'''
+<b><a href='{details['url']}'>{title}</a> ({details['published']['prop']['from']['year']})</b>
+⭐️ Ratings: {details['scored']} / 10 from {details['scored_by']} users
+
+<code>{details['synopsis'][:200]}...</code>
+
+<b>Title:</b><code> {title}</code>
+<b>Chapters:</b><code> {details['chapters']}</code>
+<b>Volumes:</b><code> {details['volumes']}</code>
+<b>Status:</b><code> {details['status']}</code>
+<b>Published:</b><code> {details['published']['string']}</code>
+
+Genre: {genres}
+    '''
+
+    bot.send_message(message.chat.id, message_text, parse_mode='HTML')
+
+
+### Allow bot to listen for messages
 bot.infinity_polling()
