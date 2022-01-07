@@ -44,6 +44,8 @@ def handle_callback(query):
         get_manga_callback(query)
     elif data.startswith('manga-'):
         get_manga_details(query)
+    elif data.startswith('recc-manga'):
+        get_manga_recc(query)
 
 
 
@@ -166,7 +168,6 @@ def send_anime_details(message, query):
     url = "https://api.jikan.moe/v4/anime/"
     response = requests.get(url + query)
     details = response.json()['data']
-    print('\n\n', details.keys())
 
     title = details["title_english"] if details["title_english"] else details["title"]
     genres = ''
@@ -234,7 +235,9 @@ def send_manga_details(message, query):
     url = "https://api.jikan.moe/v4/manga/"
     response = requests.get(url + query)
     details = response.json()['data']
-    print('\n\n', details.keys())
+
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    keyboard.row(telebot.types.InlineKeyboardButton('📚 Get other manga recommendations 📚', callback_data="recc-manga" + query))
 
     title = details["title_english"] if details["title_english"] else details["title"]
     genres = ''
@@ -242,6 +245,9 @@ def send_manga_details(message, query):
         genres += '#' + genre['name'] + ' '
 
     message_text = f'''
+--------------------
+|   <b>MANGA</b>    |
+--------------------
 <b><a href='{details['url']}'>{title}</a> ({details['published']['prop']['from']['year']})</b>
 ⭐️ Ratings: {details['scored']} / 10 from {details['scored_by']} users
 
@@ -256,7 +262,33 @@ def send_manga_details(message, query):
 Genre: {genres}
     '''
 
-    bot.send_message(message.chat.id, message_text, parse_mode='HTML')
+    bot.send_message(message.chat.id, message_text, parse_mode='HTML', reply_markup=keyboard)
+
+def get_manga_recc(query):
+    bot.answer_callback_query(query.id)
+    send_manga_recc(query.message, query.data[10:])
+
+def send_manga_recc(message, query):
+    url = f"https://api.jikan.moe/v4/manga/{query}/recommendations"
+    response = requests.get(url)
+    reccs = response.json()['data'][:5]
+
+    if len(reccs) == 0:
+        bot.send_message(message.chat.id, 'Sorry! There are no recommendations found 😔', parse_mode='HTML')
+        return
+
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    for recc in reccs:
+        keyboard.row(telebot.types.InlineKeyboardButton(recc['entry']['title'], callback_data="manga-" + str(recc['entry']["mal_id"])))
+    
+    message_text = f'''
+We have found <b><i>{len(reccs)}</i></b> mangas!
+
+Click on the manga to see more info:
+    '''
+
+    bot.send_message(message.chat.id, message_text, parse_mode='HTML', reply_markup=keyboard)
+
 
 
 ### Allow bot to listen for messages
