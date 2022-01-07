@@ -1,12 +1,50 @@
 import os
 
+# Python 3
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
 from dotenv import load_dotenv
 import telebot
 import requests
 
 config = load_dotenv(".env")
 TOKEN = os.environ.get('TOKEN')
-PORT = int(os.environ.get('PORT', 5000))
+
+WEBHOOK_HOST = 'https://drama-and-anime-buddy.herokuapp.com/'
+WEBHOOK_PORT = 8443  # 443, 80, 88 or 8443 (port need to be 'open')
+WEBHOOK_LISTEN = '0.0.0.0'  # In some VPS you may need to put here the IP addr
+
+WEBHOOK_URL_BASE = "https://%s:%s" % (WEBHOOK_HOST, WEBHOOK_PORT)
+WEBHOOK_URL_PATH = "/%s/" % (API_TOKEN)
+
+class WebhookHandler(BaseHTTPRequestHandler):
+    server_version = "WebhookHandler/1.0"
+
+    def do_HEAD(self):
+        self.send_response(200)
+        self.end_headers()
+
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+
+    def do_POST(self):
+        if self.path == WEBHOOK_URL_PATH and \
+           'content-type' in self.headers and \
+           'content-length' in self.headers and \
+           self.headers['content-type'] == 'application/json':
+            json_string = self.rfile.read(int(self.headers['content-length']))
+
+            self.send_response(200)
+            self.end_headers()
+
+            update = telebot.types.Update.de_json(json_string)
+            bot.process_new_messages([update.message])
+        else:
+            self.send_error(403)
+            self.end_headers()
+
+# PORT = int(os.environ.get('PORT', 5000))
 
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 
@@ -436,7 +474,18 @@ Click on the manga to see more info:
 ### Allow bot to listen for messages
 # bot.infinity_polling()
 
-bot.start_webhook(listen="0.0.0.0",
-                          port=int(PORT),
-                          url_path=TOKEN)
-bot.bot.setWebhook('https://drama-and-anime-buddy.herokuapp.com/' + TOKEN)
+# bot.start_webhook(listen="0.0.0.0",
+#                           port=int(PORT),
+#                           url_path=TOKEN)
+# bot.set_webhook('https://drama-and-anime-buddy.herokuapp.com/' + TOKEN)
+
+# Start server
+httpd = HTTPServer((WEBHOOK_LISTEN, WEBHOOK_PORT),
+                   WebhookHandler)
+
+# httpd.socket = ssl.wrap_socket(httpd.socket,
+#                                certfile=WEBHOOK_SSL_CERT,
+#                                keyfile=WEBHOOK_SSL_PRIV,
+#                                server_side=True)
+
+httpd.serve_forever()
