@@ -21,11 +21,9 @@ def send_welcome(message):
 def exchange_command(message):
     keyboard = telebot.types.InlineKeyboardMarkup()
     keyboard.row(
-        telebot.types.InlineKeyboardButton('Drama', callback_data='search-drama')
-        )
-    keyboard.row(
-        telebot.types.InlineKeyboardButton('Anime', callback_data='search-anime'),
-        telebot.types.InlineKeyboardButton('Manga', callback_data='search-manga')
+        telebot.types.InlineKeyboardButton('Drama', callback_data='search-drama' + message.text[8:]),
+        telebot.types.InlineKeyboardButton('Anime', callback_data='search-anime' + message.text[8:]),
+        telebot.types.InlineKeyboardButton('Manga', callback_data='search-manga' + message.text[8:])
         )
     bot.send_message(message.chat.id, 'Click the ?????:', reply_markup=keyboard)
 
@@ -36,6 +34,12 @@ def handle_callback(query):
         get_drama_callback(query)
     elif data.startswith('drama-'):
         get_drama_details(query)
+    elif data.startswith('search-anime'):
+        get_anime_callback(query)
+    elif data.startswith('anime-'):
+        get_anime_details(query)
+
+""" DRAMA QUERY """
 
 def get_drama_callback(query):
     bot.answer_callback_query(query.id)
@@ -59,6 +63,70 @@ def get_drama_details(query):
 
 def send_drama_details(message, query):
     # Working on it
+    return
+
+""" ANIME QUERY """
+
+def get_anime_callback(query):
+    bot.answer_callback_query(query.id)
+    send_anime_search_result(query.message, query.data[12:])
+
+def send_anime_search_result(message, query):
+    url = "https://api.jikan.moe/v4/anime?q="
+    response = requests.get(url + query)
+    animes = response.json()['data']
+
+    if len(animes) == 0:
+        bot.send_message(message.chat.id, 'Sorry! We couldn\'t find any animes 😔', parse_mode='HTML')
+        return
+
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    for anime in animes:
+        title = anime["title_english"] if anime["title_english"] else anime["title"]
+        print
+        keyboard.row(
+        telebot.types.InlineKeyboardButton(title, callback_data="anime-" + str(anime["mal_id"]))
+        )
+    
+    message_text = f'''
+We have found <b><i>{len(animes)}</i></b> animes!
+
+Click on the anime to see more info:
+    '''
+
+    bot.send_message(message.chat.id, message_text, parse_mode='HTML', reply_markup=keyboard)
+
+def get_anime_details(query):
+    bot.answer_callback_query(query.id)
+    send_anime_details(query.message, query.data[6:])
+
+def send_anime_details(message, query):
+    url = "https://api.jikan.moe/v4/anime/"
+    response = requests.get(url + query)
+    details = response.json()['data']
+    print('\n\n', details.keys())
+
+    title = details["title_english"] if details["title_english"] else details["title"]
+    genres = ''
+    for genre in details['genres']:
+        genres += '#' + genre['name'] + ' '
+
+    message_text = f'''
+<b><a href='{details['url']}'>{title}</a> ({details['year']})</b>
+⭐️ Ratings: {details['score']} / 10 from {details['scored_by']} users
+
+<code>{details['synopsis'][:200]}...</code>
+
+<b>Title:</b><code> {title}</code>
+<b>Episodes:</b><code> {details['episodes']}</code>
+<b>Status:</b><code> {details['status']}</code>
+<b>Aired:</b><code> {details['aired']['string']}</code>
+<b>Duration:</b><code> {details['duration']}</code>
+
+Genre: {genres}
+    '''
+
+    bot.send_message(message.chat.id, message_text, parse_mode='HTML')
 
 bot.infinity_polling()
 
